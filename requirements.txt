@@ -1,0 +1,13 @@
+openai
+torch
+PyPDF2
+ollama
+pyyaml
+beautifulsoup4
+lxml
+python-dotenv
+python-docx
+openpyxl
+rank_bm25
+jieba
+numpy

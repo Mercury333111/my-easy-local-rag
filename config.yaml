@@ -1,0 +1,53 @@
+# ===== RAG System Configuration =====
+
+# Vault files
+vault_file: "vault.txt"
+registry_file: "vault_registry.json"
+embeddings_cache_file: "vault_embeddings_cache.json"
+
+# Ollama models
+ollama_model: "qwen3.6"
+embedding_model: "nomic-embed-text"
+
+# Chunking parameters (smaller chunks = better retrieval precision)
+chunk_size: 300
+chunk_overlap: 80
+
+# Hybrid retrieval parameters
+retrieval:
+  bm25_weight: 0.6       # BM25 keyword search weight (higher = better for Chinese)
+  vector_weight: 0.4     # Vector semantic search weight
+  bm25_top_k: 10         # BM25 candidate pool size
+  vector_top_k: 10       # Vector candidate pool size
+  final_top_k: 5         # Final chunks to send to LLM (more context)
+
+# Legacy (used as fallback threshold for vector search)
+similarity_threshold: 0.3
+top_k: 3
+
+# System prompt
+system_message: >
+  You are a helpful assistant that answers questions based on provided reference materials.
+  Follow these rules strictly:
+  1. Answer the user's question directly and concisely based on the provided reference materials.
+  2. Do NOT copy or repeat the reference materials verbatim. Instead, synthesize the relevant information into a natural answer.
+  3. If the reference materials do not contain enough information to answer the question, say so honestly.
+  4. Always respond in the same language as the user's question.
+  5. When possible, cite which reference section (by number) your answer is based on.
+
+# Ollama API
+ollama_api:
+  base_url: "http://localhost:11434/v1"
+  api_key: "qwen3.6"
+
+# Supported file formats
+supported_formats:
+  - ".pdf"
+  - ".txt"
+  - ".json"
+  - ".md"
+  - ".docx"
+  - ".html"
+  - ".htm"
+  - ".csv"
+  - ".xlsx"
