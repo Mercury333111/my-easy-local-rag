@@ -139,6 +139,14 @@ READERS = {
 }
 
 
+def parse_file(file_path):
+    """Parse a file and return its text content. Raises ValueError on unsupported format."""
+    ext = os.path.splitext(file_path)[1].lower()
+    if ext not in READERS:
+        raise ValueError(f"Unsupported format: {ext}. Supported: {', '.join(READERS.keys())}")
+    return READERS[ext](file_path)
+
+
 def upload_file(file_path, config):
     """Upload a single file to the vault."""
     ext = os.path.splitext(file_path)[1].lower()

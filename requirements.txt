@@ -11,3 +11,6 @@ openpyxl
 rank_bm25
 jieba
 numpy
+fastapi
+uvicorn
+python-multipart

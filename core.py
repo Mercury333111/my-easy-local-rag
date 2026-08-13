@@ -1,12 +1,15 @@
 """
 core.py - Shared utilities for the RAG system
-Provides: config loading, vault operations, embedding cache, text chunking, hybrid retrieval
+Provides: config loading, vault operations, embedding cache, text chunking, hybrid retrieval, metrics
 """
 
 import os
 import json
 import hashlib
 import re
+import time
+from contextlib import contextmanager
+from collections import defaultdict
 
 import yaml
 import torch
@@ -399,3 +402,77 @@ class Colors:
     RED = '\033[91m'
     BOLD = '\033[1m'
     RESET = '\033[0m'
+
+
+# ===== Latency Metrics =====
+
+class MetricsTracker:
+    """Lightweight latency tracker for RAG pipeline stages.
+    Records per-stage timings and provides summary statistics.
+    """
+
+    STAGES = ["query_rewrite", "bm25_search", "vector_search", "rrf_fusion",
+              "context_format", "llm_generate", "total"]
+
+    def __init__(self):
+        self.records = []       # list of dicts, one per query
+        self._current = {}      # current query timings
+
+    @contextmanager
+    def stage(self, name):
+        """Context manager to time a pipeline stage."""
+        start = time.perf_counter()
+        yield
+        elapsed = time.perf_counter() - start
+        self._current[name] = elapsed
+
+    def start_query(self):
+        """Mark the beginning of a new query."""
+        self._current = {"_ts": time.perf_counter()}
+
+    def end_query(self):
+        """Mark the end of the current query and store the record."""
+        if "_ts" in self._current:
+            total = time.perf_counter() - self._current.pop("_ts")
+            self._current["total"] = total
+            self.records.append(self._current.copy())
+
+    def get_stats(self):
+        """Return aggregated statistics across all recorded queries."""
+        if not self.records:
+            return {}
+        stats = {}
+        for stage in self.STAGES:
+            vals = [r.get(stage, 0) for r in self.records if stage in r]
+            if vals:
+                stats[stage] = {
+                    "count": len(vals),
+                    "avg_ms": round(sum(vals) / len(vals) * 1000, 1),
+                    "min_ms": round(min(vals) * 1000, 1),
+                    "max_ms": round(max(vals) * 1000, 1),
+                    "p50_ms": round(sorted(vals)[len(vals) // 2] * 1000, 1),
+                }
+        return stats
+
+    def format_stats(self):
+        """Format stats as a readable string."""
+        stats = self.get_stats()
+        if not stats:
+            return "No metrics recorded."
+        lines = ["=== Latency Metrics ==="]
+        for stage in self.STAGES:
+            if stage in stats:
+                s = stats[stage]
+                lines.append(
+                    f"  {stage:20s}  avg={s['avg_ms']:>7.1f}ms  "
+                    f"min={s['min_ms']:>7.1f}ms  max={s['max_ms']:>7.1f}ms  "
+                    f"p50={s['p50_ms']:>7.1f}ms  (n={s['count']})"
+                )
+        return "\n".join(lines)
+
+    def export_json(self, path):
+        """Export all records to JSON."""
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"records": self.records, "stats": self.get_stats()},
+                      f, ensure_ascii=False, indent=2)
+        return path
